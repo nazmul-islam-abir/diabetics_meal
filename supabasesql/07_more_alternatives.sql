@@ -1,0 +1,73 @@
+-- ============================================================
+-- Amar Diet — extra low-cost alternatives
+-- Apply AFTER 04_seed_alternatives.sql.
+-- Every "expensive" or "imported" food has a BD-friendly low-cost swap.
+-- ============================================================
+insert into public.food_alternatives (food_id, alternative_id, priority) values
+-- Breakfast oats → ruti (the #1 user concern)
+('b_oats_khichuri',   'b_lal_ruti', 1),
+('b_oats_khichuri',   'b_alt_lalchal_ruti', 2),
+('b_oats_khichuri',   'b_sobji_ruti', 3),
+('b_alt_oats_plain',  'b_lal_ruti', 1),
+('b_alt_oats_plain',  'b_alt_lalchal_ruti', 2),
+('b_alt_oats_plain',  'b_sobji_ruti', 3),
+('b_puli_pitha',      'b_lal_ruti', 1),
+('b_puli_pitha',      'b_chira_doi', 2),
+-- Expensive fish → local fish / dal
+('p_katla',           'p_rui', 1),
+('p_katla',           'p_tilapia', 2),
+('p_katla',           'p_shing', 3),
+('p_katla',           'p_pabda', 4),
+('p_rui',             'p_tilapia', 1),
+('p_rui',             'p_pabda', 2),
+('p_shing',           'p_pabda', 1),
+('p_shing',           'p_tilapia', 2),
+('p_murgi',           'p_dim', 1),
+('p_murgi',           'p_moshur_dal', 2),
+('p_deshi_murgi',     'p_murgi', 1),
+('p_deshi_murgi',     'p_dim', 2),
+('p_deshi_murgi',     'p_moshur_dal', 3),
+('p_sola',            'p_dim', 1),
+('p_sola',            'p_moshur_dal', 2),
+('p_sola',            'p_mug_dal', 3),
+('p_liver',           'p_dim', 1),
+('p_liver',           'p_moshur_dal', 2),
+-- Veg → BD local veg
+('v_bandhakopi',      'v_lau', 1),
+('v_bandhakopi',      'v_dhundul', 2),
+('v_bandhakopi',      'v_lal_shak', 3),
+('v_palang_shak',     'v_lau', 1),
+('v_palang_shak',     'v_kolmi', 2),
+('v_kochu_shak',      'v_lal_shak', 1),
+('v_kochu_shak',      'v_dhundul', 2),
+('v_korola',          'v_kolmi', 1),
+('v_korola',          'v_chichinga', 2),
+-- Carbs
+('c_lalchal_bhat',    'c_lal_ruti_3', 1),
+('c_lalchal_bhat',    'c_lal_ruti_2', 2),
+('c_lalchal_bhat',    'c_kumra', 3),
+('c_potato_1pc',      'c_kumra', 1),
+('c_potato_1pc',      'c_lal_ruti_2', 2),
+('c_kumra',           'c_lal_ruti_2', 1),
+-- Snacks (chips/imported → local fruit)
+('s_apple',           's_peyara', 1),
+('s_apple',           's_papaya', 2),
+('s_apple',           's_jambura', 3),
+('s_apple',           's_dalim', 4),
+('s_am',              's_peyara', 1),
+('s_am',              's_papaya', 2),
+('s_am',              's_jambura', 3),
+('s_am',              's_dalim', 4),
+('s_kola',            's_papaya', 1),
+('s_kola',            's_peyara', 2),
+('s_kola',            's_jambura', 3),
+('s_chira',           's_papaya', 1),
+('s_chira',           's_dalim', 2),
+('s_chira',           's_badam', 3),
+('s_muri_chola',      's_doi', 1),
+('s_muri_chola',      's_badam', 2),
+('s_muri_chola',      's_papaya', 3),
+('s_cha_biskut',      's_papaya', 1),
+('s_cha_biskut',      's_dalim', 2),
+('s_dab',             's_tetul', 1)
+on conflict (food_id, alternative_id) do nothing;
