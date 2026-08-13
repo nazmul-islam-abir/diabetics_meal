@@ -1,8 +1,9 @@
-/// Premium black & white widget kit.
+/// আমার ডায়েট — widget kit.
 ///
 /// All widgets here respect the [AppTheme] tokens. Most include subtle motion
 /// (tap-down scale, ink-ripple-free press feedback, animated reveals) to make
-/// the app feel considered and high-end.
+/// the app feel considered and high-end. The pattern primitives are what make
+/// the product distinctive: structural geometry, never decoration.
 library;
 
 import 'dart:math' as math;
@@ -466,18 +467,28 @@ class MonoSegmented<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Segments equal-share the row if they fit, or scroll if they don't.
+    // FittedBox + maxLines:1 helps them shrink before we hit overflow.
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AppColors.chalk,
         borderRadius: BorderRadius.circular(AppRadius.pill),
         border: Border.all(color: AppColors.graphite),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final o in options) _segment(o),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: IntrinsicHeight(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final o in options)
+                _segment(o),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -493,13 +504,18 @@ class MonoSegmented<T> extends StatelessWidget {
       child: AnimatedContainer(
         duration: duration,
         curve: AppMotion.standard,
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        constraints: const BoxConstraints(minWidth: 60),
         decoration: BoxDecoration(
           color: isSel ? AppColors.ink : Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.pill),
         ),
+        alignment: Alignment.center,
         child: Text(
           o.label,
+          maxLines: 1,
+          overflow: TextOverflow.clip,
           style: TextStyle(
             color: isSel ? AppColors.paper : AppColors.ink,
             fontSize: 15,
@@ -965,6 +981,196 @@ class AnimatedCheck extends StatelessWidget {
         curve: AppMotion.overshoot,
         scale: done ? 1 : 0.0,
         child: Icon(Icons.check, color: AppColors.paper, size: size * 0.55),
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Geometric pattern primitives — unique formations, structural not decorative
+// ────────────────────────────────────────────────────────────────────────────
+
+enum MonoPatternKind { grid, dots, stripes, arcs }
+
+/// A geometric pattern that gives the app a distinctive identity without
+/// using imagery. Use on hero cards, account headers, or as background detail.
+///
+/// All patterns are drawn with [CustomPainter] — no PNGs, no gradients.
+class MonoPattern extends StatelessWidget {
+  final MonoPatternKind kind;
+  final Color color;
+  final double opacity;
+  final double stroke;
+  final double spacing;
+  final Widget? child;
+
+  const MonoPattern({
+    super.key,
+    required this.kind,
+    this.color = AppColors.ink,
+    this.opacity = 0.06,
+    this.stroke = 1.0,
+    this.spacing = 14,
+    this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _PatternPainter(
+              kind: kind,
+              color: color.withValues(alpha: opacity),
+              stroke: stroke,
+              spacing: spacing,
+            ),
+          ),
+        ),
+        if (child != null) child!,
+      ],
+    );
+  }
+}
+
+class _PatternPainter extends CustomPainter {
+  final MonoPatternKind kind;
+  final Color color;
+  final double stroke;
+  final double spacing;
+
+  _PatternPainter({
+    required this.kind,
+    required this.color,
+    required this.stroke,
+    required this.spacing,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = stroke
+      ..style = PaintingStyle.stroke
+      ..isAntiAlias = true;
+
+    switch (kind) {
+      case MonoPatternKind.grid:
+        for (double x = 0; x <= size.width; x += spacing) {
+          canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+        }
+        for (double y = 0; y <= size.height; y += spacing) {
+          canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+        }
+        break;
+      case MonoPatternKind.dots:
+        final fill = Paint()..color = color..style = PaintingStyle.fill;
+        for (double x = spacing / 2; x < size.width; x += spacing) {
+          for (double y = spacing / 2; y < size.height; y += spacing) {
+            canvas.drawCircle(Offset(x, y), stroke * 1.4, fill);
+          }
+        }
+        break;
+      case MonoPatternKind.stripes:
+        for (double y = -size.width; y < size.height + size.width; y += spacing) {
+          canvas.drawLine(Offset(y, 0), Offset(y + size.height, size.height), paint);
+        }
+        break;
+      case MonoPatternKind.arcs:
+        final cx = -size.width * 0.2;
+        final cy = size.height * 1.1;
+        for (double r = spacing * 2; r < size.width * 2.5; r += spacing) {
+          canvas.drawCircle(Offset(cx, cy), r, paint);
+        }
+        break;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PatternPainter old) =>
+      old.kind != kind || old.color != color || old.stroke != stroke || old.spacing != spacing;
+}
+
+/// A signature composition — ink solid block on the left, content on the right.
+/// Used as the "hero" element on Profile / Dashboard / Meal Plan for a layout
+/// that feels composed and unique rather than stacked cards.
+class SplitHeroCard extends StatelessWidget {
+  final double blockFraction;
+  final Color blockColor;
+  final Widget blockContent;
+  final Widget content;
+  final EdgeInsets contentPadding;
+  final double radius;
+
+  const SplitHeroCard({
+    super.key,
+    required this.blockContent,
+    required this.content,
+    this.blockFraction = 0.34,
+    this.blockColor = AppColors.ink,
+    this.contentPadding = const EdgeInsets.fromLTRB(20, 22, 22, 22),
+    this.radius = AppRadius.lg,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Container(
+        color: AppColors.card,
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              Expanded(
+                flex: (blockFraction * 100).round(),
+                child: Container(color: blockColor, child: blockContent),
+              ),
+              Expanded(
+                flex: 100 - (blockFraction * 100).round(),
+                child: Padding(padding: contentPadding, child: content),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A small accent tag — the only place the moss accent should appear as a
+/// solid color block. Keeps the system restrained.
+class AccentTag extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  const AccentTag({super.key, required this.label, this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.moss,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: AppColors.paper, size: 14),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.paper,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.6,
+            ),
+          ),
+        ],
       ),
     );
   }

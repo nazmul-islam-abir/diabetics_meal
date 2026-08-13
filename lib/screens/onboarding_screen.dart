@@ -109,42 +109,82 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _save() async {
     if (_saving) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    // Hard-check required fields before any I/O so we never hit a parse error
+    // in the middle of an async save.
+    final age = int.tryParse(_age.text.trim());
+    final weight = double.tryParse(_weight.text.trim());
+    final height = double.tryParse(_height.text.trim());
+    if (age == null || age < 1 || age > 120) {
+      _toast('বয়স ১ থেকে ১২০ এর মধ্যে হতে হবে');
+      return;
+    }
+    if (weight == null || weight < 10 || weight > 400) {
+      _toast('ওজন সঠিক নয়');
+      return;
+    }
+    if (height == null || height < 30 || height > 250) {
+      _toast('উচ্চতা সঠিক নয়');
+      return;
+    }
+
     setState(() => _saving = true);
 
-    final profile = UserProfile(
-      fullName: _name.text.trim().isEmpty ? null : _name.text.trim(),
-      mobile: _mobile.text.trim().isEmpty ? null : _mobile.text.trim(),
-      age: int.parse(_age.text.trim()),
-      sex: _sex,
-      weightKg: double.parse(_weight.text.trim()),
-      heightCm: double.parse(_height.text.trim()),
-      fastingGlucoseMmol:
-          _fasting.text.trim().isEmpty ? null : double.parse(_fasting.text.trim()),
-      postMealGlucoseMmol:
-          _postMeal.text.trim().isEmpty ? null : double.parse(_postMeal.text.trim()),
-      hba1cPercent: _hba1c.text.trim().isEmpty ? null : double.parse(_hba1c.text.trim()),
-      onInsulin: _onInsulin,
-      medication: _medication.text.trim().isEmpty ? null : _medication.text.trim(),
-      systolicBp: _systolic.text.trim().isEmpty ? null : int.parse(_systolic.text.trim()),
-      diastolicBp: _diastolic.text.trim().isEmpty ? null : int.parse(_diastolic.text.trim()),
-      hasCkd: _hasCkd,
-      hasHeartDisease: _hasHeart,
-      hasAnemia: _hasAnemia,
-      otherConditions: _other.text.trim().isEmpty ? null : _other.text.trim(),
-      activityLevel: _activity,
-      mealSizePref: _mealSize,
-      foodPreference: _foodPref,
-    );
-
     try {
-      await SupabaseService.saveProfile(profile);
-      // Mirror identity on auth metadata so header/cards stay consistent.
-      await SupabaseService.updateAccountMeta(
-        fullName: profile.fullName,
-        mobile: profile.mobile,
+      // Safe parsing: ensure we never crash on invalid input that slipped
+      // past the basic validators (e.g. decimals in int fields).
+      final fasting = double.tryParse(_fasting.text.trim());
+      final postMeal = double.tryParse(_postMeal.text.trim());
+      final hba1c = double.tryParse(_hba1c.text.trim());
+      
+      final systolic = int.tryParse(_systolic.text.trim()) ?? 
+          (double.tryParse(_systolic.text.trim())?.round());
+      final diastolic = int.tryParse(_diastolic.text.trim()) ?? 
+          (double.tryParse(_diastolic.text.trim())?.round());
+
+      final profile = UserProfile(
+        fullName: _name.text.trim().isEmpty ? null : _name.text.trim(),
+        mobile: _mobile.text.trim().isEmpty ? null : _mobile.text.trim(),
+        age: age,
+        sex: _sex,
+        weightKg: weight,
+        heightCm: height,
+        fastingGlucoseMmol: fasting,
+        postMealGlucoseMmol: postMeal,
+        hba1cPercent: hba1c,
+        onInsulin: _onInsulin,
+        medication: _medication.text.trim().isEmpty ? null : _medication.text.trim(),
+        systolicBp: systolic,
+        diastolicBp: diastolic,
+        hasCkd: _hasCkd,
+        hasHeartDisease: _hasHeart,
+        hasAnemia: _hasAnemia,
+        otherConditions: _other.text.trim().isEmpty ? null : _other.text.trim(),
+        activityLevel: _activity,
+        mealSizePref: _mealSize,
+        foodPreference: _foodPref,
       );
 
+      await SupabaseService.saveProfile(profile);
+
+      // Mirror identity on auth metadata so header/cards stay consistent.
+      // Failure here must not crash the whole save.
+      try {
+        await SupabaseService.updateAccountMeta(
+          fullName: profile.fullName,
+          mobile: profile.mobile,
+        );
+      } catch (_) {
+        // Silent — profile is already saved. Identity mirror is best-effort.
+      }
+
       if (!mounted) return;
+
+      // Capture the navigator BEFORE any further awaits so we don't hit
+      // "looking up a deactivated widget" if the user navigates away during
+      // the warnings dialog.
+      final navigator = Navigator.of(context);
+
       final cls = ClassificationEngine.classify(profile);
       if (cls.warnings.isNotEmpty) {
         await showDialog<void>(
@@ -153,19 +193,50 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         );
       }
       if (!mounted) return;
-      Navigator.pop(context, true);
-    } catch (e) {
+      navigator.pop(true);
+    } catch (e, st) {
+      // Surface error and keep the user on the screen instead of tearing the
+      // app down. Log the stack for debugging.
+      debugPrint('saveProfile failed: $e\n$st');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text('সংরক্ষণ ব্যর্থ: $e', style: const TextStyle(color: AppColors.paper)),
+          content: Text(
+            'সংরক্ষণ ব্যর্থ: ${_friendlyError(e)}',
+            style: const TextStyle(color: AppColors.paper),
+          ),
           backgroundColor: AppColors.ink,
         ),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  void _toast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text(msg, style: const TextStyle(color: AppColors.paper)),
+        backgroundColor: AppColors.ink,
+      ),
+    );
+  }
+
+  String _friendlyError(Object e) {
+    final s = e.toString();
+    if (s.contains('SocketException') || s.contains('Failed host lookup')) {
+      return 'ইন্টারনেট সংযোগ নেই';
+    }
+    if (s.contains('42501') || s.toLowerCase().contains('row-level security')) {
+      return 'অনুমতি নেই — সেশন রিফ্রেশ করুন';
+    }
+    if (s.contains('23514') || s.contains('check constraint')) {
+      return 'তথ্য সীমার বাইরে';
+    }
+    return 'আবার চেষ্টা করুন';
   }
 
   void _next() {
@@ -462,12 +533,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _labeled('রক্তচাপ (mmHg)'),
+        _labeled('রক্তচাপ (mmHg)', 'ঐচ্ছিক'),
         Row(
           children: [
-            Expanded(child: _field(_systolic, 'সিস্টোলিক', validator: _number, numeric: true)),
+            Expanded(child: _field(_systolic, 'সিস্টোলিক', optional: true, numeric: true)),
             const SizedBox(width: 12),
-            Expanded(child: _field(_diastolic, 'ডায়াস্টোলিক', validator: _number, numeric: true)),
+            Expanded(child: _field(_diastolic, 'ডায়াস্টোলিক', optional: true, numeric: true)),
           ],
         ),
         const SizedBox(height: 18),
@@ -612,17 +683,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     String? suffix,
     String? Function(String?)? validator,
     bool numeric = false,
+    bool optional = false,
   }) {
+    // Tight, width-safe layout — label above, compact field below. The suffix
+    // sits inside the input and is allowed to wrap so two side-by-side fields
+    // never overflow on narrow phones.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _labeled(label),
+        _labeled(label, optional ? 'ঐচ্ছিক' : null),
         TextFormField(
           controller: ctrl,
-          validator: validator,
+          validator: optional
+              ? (v) {
+                  if (v == null || v.trim().isEmpty) return null;
+                  if (double.tryParse(v.trim()) == null) return 'সংখ্যা দিন';
+                  return null;
+                }
+              : validator,
           keyboardType: numeric ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
           inputFormatters: numeric ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))] : null,
-          decoration: suffix != null ? InputDecoration(hintText: '0', suffixText: suffix) : const InputDecoration(),
+          decoration: suffix != null
+              ? InputDecoration(
+                  hintText: '0',
+                  suffixText: suffix,
+                  suffixStyle: const TextStyle(fontSize: 13, color: AppColors.smoke, fontWeight: FontWeight.w600),
+                  isDense: true,
+                )
+              : const InputDecoration(isDense: true),
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.ink),
         ),
       ],
@@ -672,12 +760,14 @@ class _WarningsDialog extends StatelessWidget {
       backgroundColor: AppColors.paper,
       surfaceTintColor: AppColors.paper,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Row(
               children: [
                 Container(
@@ -719,6 +809,6 @@ class _WarningsDialog extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }

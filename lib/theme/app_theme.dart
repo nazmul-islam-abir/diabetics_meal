@@ -1,12 +1,16 @@
-/// Pure black & white design system for আমার ডায়েট.
+/// আমার ডায়েট — minimal identity system.
 ///
-/// Why this exists:
-///   • Premium editorial feel — high contrast, generous whitespace, oversized
-///     typography tuned for elderly eyes (everything ≥ 16 sp, primary ≥ 18 sp).
-///   • Zero brand colors by default. Every accent is grayscale so the UI feels
-///     calm, professional, and unmistakably high-end.
-///   • Motion is built into the system: durations, curves, and shared
-///     decoration primitives live here so every screen reads as one product.
+/// Design intent:
+///   • Editorial paper feel — warm off-white canvas, deep ink type, never the
+///     harsh #FFFFFF / #000000 combination that makes a health app feel like
+///     a lab report.
+///   • One calm accent — moss. It threads through the whole product without
+///     shouting. Nothing else competes.
+///   • Type does the heavy lifting. Two weights, generous leading, tight
+///     tracking on display sizes.
+///   • Geometric, never decorative. The pattern primitives in [MonoPattern]
+///     are intentionally structural — grid, dots, stripes, arcs — used as
+///     background detail, not as decoration.
 library;
 
 import 'package:flutter/cupertino.dart';
@@ -16,23 +20,36 @@ import 'package:flutter/services.dart';
 class AppColors {
   AppColors._();
 
-  // The five canonical stops we use everywhere. No tints, no shades.
-  static const Color ink = Color(0xFF0A0A0A); // primary text & fg
-  static const Color paper = Color(0xFFFFFFFF); // canvas
-  static const Color chalk = Color(0xFFF4F4F4); // surface
-  static const Color graphite = Color(0xFFE5E5E5); // divider / outline
-  static const Color smoke = Color(0xFF8A8A8A); // secondary text
-  static const Color ash = Color(0xFFB8B8B8); // tertiary text
+  // ── Five canonical stops ────────────────────────────────────────────────
+  // Warm paper -> deep ink. No blue-grays, no clinical whites.
+  static const Color ink = Color(0xFF161616); // primary text & fg
+  static const Color paper = Color(0xFFF5F2EC); // canvas (warm off-white)
+  static const Color card = Color(0xFFFBF9F4); // raised surface
+  static const Color chalk = Color(0xFFEAE5DA); // sunken surface / input fill
+  static const Color graphite = Color(0xFFD7D1C2); // divider / outline
+  static const Color smoke = Color(0xFF7A7368); // secondary text
+  static const Color ash = Color(0xFFA8A298); // tertiary text
 
-  // Functional mapping — same five colors, used with intent.
+  // ── Single accent — moss ────────────────────────────────────────────────
+  // Chosen for: health context, low saturation, warm undertone that matches
+  // the paper canvas. It is the only chromatic color allowed in the system.
+  static const Color moss = Color(0xFF5C6B4F);
+  static const Color mossDeep = Color(0xFF3F4A36);
+  static const Color mossSoft = Color(0xFFE3E6DA); // tinted surface
+
+  // ── Functional mapping ──────────────────────────────────────────────────
   static const Color text = ink;
   static const Color textMuted = smoke;
   static const Color textDim = ash;
   static const Color background = paper;
-  static const Color surface = chalk;
+  static const Color surface = card;
   static const Color border = graphite;
+  static const Color accent = moss;
+  static const Color accentDeep = mossDeep;
+  static const Color accentSurface = mossSoft;
   static const Color inverse = ink;
   static const Color onInverse = paper;
+  static const Color onAccent = paper;
 }
 
 class AppMotion {
@@ -82,11 +99,11 @@ class AppTheme {
       brightness: Brightness.light,
       primary: AppColors.ink,
       onPrimary: AppColors.paper,
-      secondary: AppColors.ink,
+      secondary: AppColors.moss,
       onSecondary: AppColors.paper,
       error: AppColors.ink,
       onError: AppColors.paper,
-      surface: AppColors.paper,
+      surface: AppColors.card,
       onSurface: AppColors.ink,
       surfaceContainerHighest: AppColors.chalk,
       outline: AppColors.graphite,
@@ -118,9 +135,9 @@ class AppTheme {
         titleTextStyle: textTheme.titleLarge,
       ),
       bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: AppColors.paper,
-        surfaceTintColor: AppColors.paper,
-        modalBackgroundColor: AppColors.paper,
+        backgroundColor: AppColors.card,
+        surfaceTintColor: AppColors.card,
+        modalBackgroundColor: AppColors.card,
         elevation: 0,
         modalElevation: 0,
         shape: RoundedRectangleBorder(
@@ -128,8 +145,8 @@ class AppTheme {
         ),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: AppColors.paper,
-        surfaceTintColor: AppColors.paper,
+        backgroundColor: AppColors.card,
+        surfaceTintColor: AppColors.card,
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
@@ -194,7 +211,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.ink, width: 1.8),
+          borderSide: const BorderSide(color: AppColors.moss, width: 1.8),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -207,19 +224,19 @@ class AppTheme {
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? AppColors.paper : AppColors.paper),
-        trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? AppColors.ink : AppColors.ash),
+        trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? AppColors.moss : AppColors.ash),
         trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: AppColors.ink,
+        color: AppColors.moss,
         linearTrackColor: AppColors.graphite,
         circularTrackColor: AppColors.graphite,
       ),
       sliderTheme: const SliderThemeData(
-        activeTrackColor: AppColors.ink,
+        activeTrackColor: AppColors.moss,
         inactiveTrackColor: AppColors.graphite,
-        thumbColor: AppColors.ink,
-        overlayColor: Color(0x14000000),
+        thumbColor: AppColors.moss,
+        overlayColor: Color(0x225C6B4F),
       ),
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
@@ -243,8 +260,8 @@ class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       ),
       cardTheme: CardThemeData(
-        color: AppColors.paper,
-        surfaceTintColor: AppColors.paper,
+        color: AppColors.card,
+        surfaceTintColor: AppColors.card,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(

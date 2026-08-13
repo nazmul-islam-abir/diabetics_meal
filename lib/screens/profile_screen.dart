@@ -213,88 +213,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final monogram = name.characters.first.toUpperCase();
 
     return RevealOnEnter(
-      child: Container(
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          color: AppColors.ink,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: SplitHeroCard(
+        blockColor: AppColors.ink,
+        blockContent: MonoPattern(
+          kind: MonoPatternKind.arcs,
+          color: AppColors.paper,
+          opacity: 0.10,
+          spacing: 18,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
+                AccentTag(label: 'সক্রিয়', icon: Icons.bolt),
+                Text(
+                  monogram,
+                  style: const TextStyle(
+                    fontSize: 72,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.paper,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    monogram,
-                    style: const TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                      letterSpacing: -0.6,
-                    ),
+                    letterSpacing: -2,
+                    height: 1,
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.paper,
-                          letterSpacing: -0.2,
-                          height: 1.15,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'সক্রিয় সদস্য',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.paper.withValues(alpha: 0.7),
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ],
+                Text(
+                  'আমার\nডায়েট',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.paper.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    height: 1.3,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
-            const Divider(color: Color(0xFF2A2A2A), height: 1),
+          ),
+        ),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              name,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.ink,
+                letterSpacing: -0.2,
+                height: 1.15,
+              ),
+            ),
             const SizedBox(height: 14),
-            _rowInverse('ইমেইল', email.isEmpty ? '—' : email),
+            _rowLight('ইমেইল', email.isEmpty ? '—' : email),
             const SizedBox(height: 8),
-            _rowInverse('মোবাইল', mobile),
+            _rowLight('মোবাইল', mobile),
           ],
         ),
       ),
     );
   }
 
-  Widget _rowInverse(String label, String value) {
+  Widget _rowLight(String label, String value) {
     return Row(
       children: [
         Expanded(
           flex: 2,
           child: Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: AppColors.paper.withValues(alpha: 0.7),
+              color: AppColors.smoke,
               letterSpacing: 0.4,
             ),
           ),
@@ -306,7 +296,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.paper,
+              color: AppColors.ink,
             ),
             textAlign: TextAlign.right,
           ),

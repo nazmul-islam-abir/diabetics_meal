@@ -108,12 +108,21 @@ class SupabaseService {
   }
 
   /// Upserts the user's clinical profile (public.user_profiles).
+  ///
+  /// We pass `onConflict: 'user_id'` so Postgres knows the merge target and
+  /// doesn't silently fail on update. Without it, an upsert of an existing
+  /// row can throw a 400 that bubbles up and crashes the app.
   static Future<void> saveProfile(UserProfile profile) async {
     final userId = currentUser?.id;
     if (userId == null) {
       throw StateError('No authenticated user — sign in before saving a profile.');
     }
-    await client.from('user_profiles').upsert(profile.toSupabaseRow(userId));
+    await client
+        .from('user_profiles')
+        .upsert(
+          profile.toSupabaseRow(userId),
+          onConflict: 'user_id',
+        );
   }
 
   // ----------- DAY PLAN + LOG -----------
