@@ -520,22 +520,36 @@ grant execute on function public.finish_workout_session(uuid) to authenticated;
 
 -- ---------- 11. RPC: get_workout_logs ----------
 -- Returns the last `p_days` of session summaries for the dashboard chart.
+-- Column names are aliased to match the Dart `WorkoutLogRow` model:
+--   day / total / completed / total_minutes / total_calories.
+-- total_minutes  = total_duration_seconds / 60 (rounded down).
+-- total_calories = total_minutes * 5 — a conservative fixed estimate
+-- used when the app doesn't have a per-exercise MET table available.
+-- (The user can always override this with a real MET-based estimate
+-- in a follow-up; the rough number is enough for the dashboard's
+-- "0/7 দিন / 0 মিনিট / 0 ক্যালোরি" headline which is currently
+-- permanently stuck at 0 because the field names didn't match.)
 create or replace function public.get_workout_logs(
   p_days int default 7
 )
 returns table (
-  session_date date,
-  total_items int,
-  completed_items int,
-  total_duration_seconds int,
+  day date,
+  total int,
+  completed int,
+  total_minutes int,
+  total_calories int,
   is_finished boolean
 )
 language sql
 security definer
 set search_path = public
 as $$
-  select s.session_date, s.total_items, s.completed_items,
-         s.total_duration_seconds, s.is_finished
+  select s.session_date as day,
+         s.total_items as total,
+         s.completed_items as completed,
+         floor(s.total_duration_seconds / 60) as total_minutes,
+         floor(s.total_duration_seconds / 60) * 5 as total_calories,
+         s.is_finished
   from public.workout_sessions s
   where s.user_id = auth.uid()
     and s.session_date >= (current_date - (p_days - 1))

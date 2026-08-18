@@ -881,14 +881,14 @@ class _WorkoutAdherenceCard extends StatelessWidget {
           Row(
             children: [
               _MiniStat(
-                label: 'সময়',
-                value: '$mn মিনিট',
+                label: 'সময় (মিনিট)',
+                value: '$mn',
                 icon: Icons.timer_rounded,
               ),
               const SizedBox(width: AppSpacing.md),
               _MiniStat(
                 label: 'ক্যালোরি',
-                value: '$cn কিলোক্যালোরি',
+                value: '$cn',
                 icon: Icons.local_fire_department_rounded,
               ),
               const SizedBox(width: AppSpacing.md),

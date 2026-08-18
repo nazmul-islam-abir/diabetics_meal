@@ -832,18 +832,15 @@ class _WorkoutDetailsScreenState extends State<WorkoutDetailsScreen> {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       child: Column(
         children: [
-          SizedBox(
-            height: 56,
-            child: MonoButton(
-              label: _completed ? 'সম্পন্ন হয়েছে' : 'সম্পন্ন করুন',
-              leading: _completed
-                  ? Icons.check_circle_rounded
-                  : Icons.check_rounded,
-              variant: MonoButtonVariant.primary,
-              onPressed: _completed
-                  ? null
-                  : (_running ? _markCompleted : _markCompleted),
-            ),
+          // No outer SizedBox — MonoButton owns its 62dp height internally;
+          // wrapping it in a smaller box was clipping the Bangla label.
+          MonoButton(
+            label: _completed ? 'সম্পন্ন হয়েছে' : 'সম্পন্ন করুন',
+            leading: _completed
+                ? Icons.check_circle_rounded
+                : Icons.check_rounded,
+            variant: MonoButtonVariant.primary,
+            onPressed: _completed ? null : _markCompleted,
           ),
           const SizedBox(height: 10),
           const Text(

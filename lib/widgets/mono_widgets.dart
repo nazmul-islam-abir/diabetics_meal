@@ -63,6 +63,8 @@ class _GradientBackdropState extends State<GradientBackdrop>
     return Stack(
       fit: StackFit.expand,
       children: [
+        const DecoratedBox(
+            decoration: BoxDecoration(gradient: AppGradients.cosmos)),
         AnimatedBuilder(
           animation: _c,
           builder: (context, _) {
@@ -89,26 +91,17 @@ class _BlobPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) return;
-    
-    // Static base cosmos
-    final basePaint = Paint()
-      ..shader = AppGradients.cosmos.createShader(Offset.zero & size);
-    canvas.drawRect(Offset.zero & size, basePaint);
-
     for (int i = 0; i < blobs.length; i++) {
       final phase = (t + i / blobs.length) % 1.0;
       final dx = math.sin(phase * math.pi * 2) * 0.18;
       final dy = math.cos(phase * math.pi * 2 + 1.3) * 0.16;
-      
-      // Scale down the draw call to avoid massive overdraw if the driver is struggling.
       final paint = Paint()
-        ..blendMode = BlendMode.srcOver
-        ..shader = blobs[i].createShader(Offset.zero & size);
-      
+        ..blendMode = BlendMode.plus
+        ..shader =
+            blobs[i].createShader(Rect.fromLTWH(0, 0, size.width, size.height));
       canvas.save();
       canvas.translate(dx * size.width, dy * size.height);
-      canvas.drawRect(Offset.zero & size, paint);
+      canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
       canvas.restore();
     }
   }
@@ -306,10 +299,6 @@ class _RevealOnEnterState extends State<RevealOnEnter>
 
   @override
   Widget build(BuildContext context) {
-    // If not enabled, we still want to show the child at 100% opacity 
-    // and skip the animation.
-    if (!widget.enabled) return widget.child;
-
     return FadeTransition(
       opacity: _fade,
       child: SlideTransition(position: _slide, child: widget.child),
@@ -364,7 +353,8 @@ class MonoButton extends StatelessWidget {
     this.leading,
     this.trailing,
     this.loading = false,
-    this.padding = const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
+    this.padding =
+        const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
     this.gradient,
   });
 
@@ -387,7 +377,7 @@ class MonoButton extends StatelessWidget {
       child: AnimatedContainer(
         duration: AppMotion.short,
         curve: AppMotion.standard,
-        height: 62,
+        height: 64,
         padding: padding,
         decoration: BoxDecoration(
           gradient: isGradient ? grad : null,
@@ -618,19 +608,15 @@ class SectionRule extends StatelessWidget {
               ),
             ),
           ),
-          Flexible(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Text(
-                label!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 2,
-                  color: AppColors.textMuted,
-                ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Text(
+              label!,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 2,
+                color: AppColors.textMuted,
               ),
             ),
           ),
@@ -708,27 +694,22 @@ class MonoSegmented<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Segments equal-share the row if they fit, or scroll if they don't.
-    // FittedBox + maxLines:1 helps them shrink before we hit overflow.
+    // Fixed-height row, equal-share widths. No IntrinsicHeight (which
+    // forced a two-pass layout on every parent rebuild) and no nested
+    // SingleChildScrollView (which combined with the form's scroller to
+    // blow up frame cost when the IME appeared).
     return Container(
-      width: double.infinity,
+      height: 48,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AppColors.surfaceHigh,
         borderRadius: BorderRadius.circular(AppRadius.pill),
         border: Border.all(color: AppColors.line),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        child: IntrinsicHeight(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final o in options) _segment(o),
-            ],
-          ),
-        ),
+      child: Row(
+        children: [
+          for (final o in options) Expanded(child: _segment(o)),
+        ],
       ),
     );
   }
@@ -745,8 +726,6 @@ class MonoSegmented<T> extends StatelessWidget {
         duration: duration,
         curve: AppMotion.standard,
         margin: const EdgeInsets.symmetric(horizontal: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        constraints: const BoxConstraints(minWidth: 60),
         decoration: BoxDecoration(
           gradient: isSel ? AppGradients.aurora : null,
           borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -761,15 +740,22 @@ class MonoSegmented<T> extends StatelessWidget {
               : null,
         ),
         alignment: Alignment.center,
-        child: Text(
-          o.label,
-          maxLines: 1,
-          overflow: TextOverflow.clip,
-          style: TextStyle(
-            color: isSel ? AppColors.void1 : AppColors.text,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.2,
+        // FittedBox scales the text down if it would overflow, so 4 long
+        // Bangla labels can fit in a single equal-share segment without
+        // triggering a parent rebuild.
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            o.label,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.clip,
+            style: TextStyle(
+              color: isSel ? AppColors.void1 : AppColors.text,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
           ),
         ),
       ),
@@ -814,8 +800,8 @@ class _LoadingMarkState extends State<LoadingMark>
       builder: (context, _) => SizedBox(
         width: widget.size,
         height: widget.size,
-        child: CircularProgressIndicator(
-          valueColor: const AlwaysStoppedAnimation(AppColors.cyan),
+        child: const CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation(AppColors.cyan),
           strokeWidth: 2.2,
           value: null,
         ),
@@ -1485,26 +1471,23 @@ class AccentTag extends StatelessWidget {
           ),
         ],
       ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, color: AppColors.void1, size: 14),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.void1,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.6,
-              ),
-            ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: AppColors.void1, size: 14),
+            const SizedBox(width: 6),
           ],
-        ),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.void1,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.6,
+            ),
+          ),
+        ],
       ),
     );
   }
